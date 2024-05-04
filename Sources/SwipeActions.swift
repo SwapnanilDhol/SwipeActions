@@ -116,9 +116,6 @@ public enum SwipeActionStyle {
 
 /// Options for configuring the swipe view.
 public struct SwipeOptions {
-    /// If swiping is currently enabled.
-    var swipeEnabled = true
-
     /// The minimum distance needed to drag to start the gesture. Should be more than 0 for best compatibility with other gestures/buttons.
     var swipeMinimumDistance = Double(2)
 
@@ -163,10 +160,6 @@ public struct SwipeOptions {
 
     /// The animation used for adjusting the content's view when it's triggered.
     var actionContentTriggerAnimation = Animation.spring(response: 0.2, dampingFraction: 1, blendDuration: 1)
-
-    /// The animation used at the start of the gesture, after dragging the `swipeMinimumDistance`.
-//    var swipeMinimumDistanceAnimation = Animation.spring(response: 0.3, dampingFraction: 1, blendDuration: 1)
-//    var asd = ""
 
     /// Values for controlling the close animation.
     var offsetCloseAnimationStiffness = Double(160), offsetCloseAnimationDamping = Double(70)
@@ -446,8 +439,7 @@ public struct SwipeView<Label, LeadingActions, TrailingActions>: View where Labe
                 }
                 .onChanged(onChanged)
                 .onEnded(onEnded)
-                .updatingVelocity($velocity),
-            including: options.swipeEnabled ? .all : .subviews /// Enable/disable swiping here.
+                .updatingVelocity($velocity)
         )
         .onChange(of: currentlyDragging) { currentlyDragging in /// Detect gesture cancellations.
             if !currentlyDragging, let latestDragGestureValueBackup {
@@ -466,8 +458,10 @@ public struct SwipeView<Label, LeadingActions, TrailingActions>: View where Labe
                 leadingState == nil && newValue == .triggering
 
             if changed, options.enableTriggerHaptics { /// Generate haptic feedback if necessary.
+                #if os(iOS)
                 let generator = UIImpactFeedbackGenerator(style: .rigid)
                 generator.impactOccurred()
+                #endif
             }
         }
         .onChange(of: trailingState) { [trailingState] newValue in
@@ -477,8 +471,10 @@ public struct SwipeView<Label, LeadingActions, TrailingActions>: View where Labe
                 trailingState == nil && newValue == .triggering
 
             if changed, options.enableTriggerHaptics {
+                #if os(iOS)
                 let generator = UIImpactFeedbackGenerator(style: .rigid)
                 generator.impactOccurred()
+                #endif
             }
         }
 
@@ -861,17 +857,8 @@ extension SwipeView {
             } else {
                 currentSide = .trailing
             }
-
-            /// The gesture just started, so animate the change (in case `swipeMinimumDistance > 0`).
-//            withAnimation(options.swipeMinimumDistanceAnimation) {
-//                change(value: value)
-//            }
-        } else {
-            change(value: value)
         }
-    }
 
-    func change(value: DragGesture.Value) {
         /// The total offset of the swipe view.
         let totalOffset = savedOffset + value.translation.width
 
@@ -1114,13 +1101,6 @@ public extension SwipeAction {
 }
 
 public extension SwipeView {
-    /// If swiping is currently enabled.
-    func swipeEnabled(_ value: Bool) -> SwipeView {
-        var view = self
-        view.options.swipeEnabled = value
-        return view
-    }
-
     /// The minimum distance needed to drag to start the gesture. Should be more than 0 for best compatibility with other gestures/buttons.
     func swipeMinimumDistance(_ value: Double) -> SwipeView {
         var view = self
@@ -1226,13 +1206,6 @@ public extension SwipeView {
         return view
     }
 
-    /// The animation used at the start of the gesture, after dragging the `swipeMinimumDistance`.
-//    func swipeMinimumDistanceAnimation(_ value: Animation) -> SwipeView {
-//        var view = self
-//        view.options.swipeMinimumDistanceAnimation = value
-//        return view
-//    }
-
     /// Values for controlling the close animation.
     func swipeOffsetCloseAnimation(stiffness: Double, damping: Double) -> SwipeView {
         var view = self
@@ -1266,9 +1239,7 @@ public struct SwipeDeleteModifier: ViewModifier {
         content
             .mask(
                 Color.clear.overlay(
-                    SwipeDeleteMaskShape(animatableData: visibility)
-                        .padding(.horizontal, -100) /// Prevent horizontal clipping
-                        .padding(.vertical, -10), /// Prevent vertical clipping
+                    SwipeDeleteMaskShape(animatableData: visibility),
                     alignment: .top
                 )
             )
